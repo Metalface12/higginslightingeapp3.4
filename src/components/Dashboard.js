@@ -1,24 +1,25 @@
+```jsx
 // src/components/Dashboard.js
 import React, { useState, useEffect } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 
 export default function Dashboard() {
-  // Local state
+  // Local state for all quotes and search term
   const [quotes, setQuotes] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Roofline per‑foot rates
+  // Define the per‑foot rates for roofline
   const rates = {
     'Haven Evolution': 60,
     'Haven Classic': 40,
     GlowFi: 25,
     Jasco: 15,
     'Christmas Lights Leasing': 8,
-    'Christmas Lights Labor Only': 6
+    'Christmas Lights Labor Only': 6,
   }
 
-  // Firestore listener
+  // Subscribe to Firestore 'quotes' collection
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'quotes'),
@@ -32,11 +33,11 @@ export default function Dashboard() {
     return unsubscribe
   }, [])
 
-  // Filter quotes by name, email, or total
+  // Filter quotes by customer name, email, or total
   const filteredQuotes = quotes.filter(q => {
     const term = searchTerm.toLowerCase()
-    const name = q.customer?.name?.toLowerCase() || ''
-    const email = q.customer?.email?.toLowerCase() || ''
+    const name = q.customer?.name.toLowerCase() || ''
+    const email = q.customer?.email.toLowerCase() || ''
     const total = q.total?.toString() || ''
     return name.includes(term) || email.includes(term) || total.includes(term)
   })
@@ -66,7 +67,8 @@ export default function Dashboard() {
               borderRadius: 6,
               padding: 16,
               marginBottom: 16,
-              background: '#f9f9f9'
+              background: '#f9f9f9',
+              color: '#000'
             }}
           >
             <p><strong>ID:</strong> {q.id}</p>
@@ -83,24 +85,14 @@ export default function Dashboard() {
               <li>
                 <strong>Roofline ({q.values.roof}):</strong> {q.values.feet || 0} ft × ${roofRate} = ${roofTotal}
               </li>
-              <li>
-                <strong>Trees:</strong> {q.values.treesCount} × ${q.values.treesPrice}
-              </li>
-              <li>
-                <strong>Bushes:</strong> {q.values.bushesCount} × ${q.values.bushesPrice}
-              </li>
-              <li>
-                <strong>Ground Lights:</strong> {q.values.ground || 0} ft × $5 = ${groundTotal}
-              </li>
+              <li><strong>Trees:</strong> {q.values.treesCount} × ${q.values.treesPrice}</li>
+              <li><strong>Bushes:</strong> {q.values.bushesCount} × ${q.values.bushesPrice}</li>
+              <li><strong>Ground Lights:</strong> {q.values.ground || 0} ft × $5 = ${groundTotal}</li>
               {q.values.otherPrice > 0 && (
-                <li>
-                  <strong>Other ({q.values.otherDesc}):</strong> ${q.values.otherPrice}
-                </li>
+                <li><strong>Other ({q.values.otherDesc}):</strong> ${q.values.otherPrice}</li>
               )}
               {q.values.addPrice > 0 && (
-                <li>
-                  <strong>Additional Cost ({q.values.addDesc}):</strong> ${q.values.addPrice}
-                </li>
+                <li><strong>Additional Cost ({q.values.addDesc}):</strong> ${q.values.addPrice}</li>
               )}
             </ul>
 
@@ -113,3 +105,4 @@ export default function Dashboard() {
     </div>
   )
 }
+```

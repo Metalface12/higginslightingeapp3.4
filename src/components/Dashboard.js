@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// Per‑foot roofline rates
+// Pricing rates per foot
 const RATES = {
   'Haven Evolution': 60,
   'Haven Classic': 40,
@@ -19,26 +19,31 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedQuote, setSelectedQuote] = useState(null);
 
-  // Firestore listener
+  // Load quotes from Firestore
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'quotes'),
-      (snapshot) =>
-        setQuotes(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))),
-      (err) => console.error('Firestore error:', err)
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setQuotes(data);
+      },
+      (error) => console.error('Firestore error:', error)
     );
     return unsubscribe;
   }, []);
 
-  // Simple filter
-  const filtered = quotes.filter((q) => {
+  // Filter quotes by name, email, or total
+  const filteredQuotes = quotes.filter((quote) => {
     const term = searchTerm.toLowerCase();
-    return (
-      (q.customer?.name || '').toLowerCase().includes(term) ||
-      (q.customer?.email || '').toLowerCase().includes(term) ||
-      q.total?.toString().includes(term)
-    );
+    const name = quote.customer?.name?.toLowerCase() || '';
+    const email = quote.customer?.email?.toLowerCase() || '';
+    const totalStr = quote.total?.toString() || '';
+    return name.includes(term) || email.includes(term) || totalStr.includes(term);
   });
+
+  const handleViewDetails = (quote) => {
+    setSelectedQuote(quote);
+  };
 
   return (
     <div style={{ padding: 20 }}>
@@ -52,9 +57,9 @@ export default function Dashboard() {
       />
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
-        {filtered.map((q) => (
+        {filteredQuotes.map((quote) => (
           <li
-            key={q.id}
+            key={quote.id}
             style={{
               marginBottom: 12,
               padding: 12,
@@ -63,10 +68,11 @@ export default function Dashboard() {
             }}
           >
             <div>
-              📅 {q.date || 'N/A'} — <strong>{q.customer?.name || 'N/A'}</strong> — ${q.total ?? 0}
+              📅 {quote.date || 'N/A'} —{' '}
+              <strong>{quote.customer?.name || 'N/A'}</strong> — ${quote.total || 0}
             </div>
             <button
-              onClick={() => setSelectedQuote(q)}
+              onClick={() => handleViewDetails(quote)}
               style={{
                 marginTop: 6,
                 padding: '4px 8px',
@@ -83,34 +89,21 @@ export default function Dashboard() {
         ))}
       </ul>
 
-      {/* Detail Panel */}
       {selectedQuote && (
         <div
           style={{
-            position: 'fixed',
-            top: '10%',
-            left: '10%',
-            right: '10%',
-            bottom: '10%',
-            background: '#fff',
-            border: '1px solid #ccc',
-            borderRadius: 8,
-            padding: 20,
-            overflowY: 'auto',
-            zIndex: 1000,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            position: 'fixed', top: '10%', left: '10%', right: '10%', bottom: '10%',
+            background: '#fff', border: '1px solid #ccc', borderRadius: 8,
+            padding: 20, overflowY: 'auto', zIndex: 1000,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}
         >
           <button
             onClick={() => setSelectedQuote(null)}
             style={{
-              float: 'right',
-              background: '#FF4136',
-              color: '#fff',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: 4,
-              cursor: 'pointer',
+              float: 'right', background: '#FF4136', color: '#fff',
+              border: 'none', padding: '6px 12px', borderRadius: 4,
+              cursor: 'pointer'
             }}
           >
             Close
@@ -120,10 +113,8 @@ export default function Dashboard() {
             Quote Details
           </h3>
 
-          {/* Date */}
           <p><strong>Date:</strong> {selectedQuote.date || 'N/A'}</p>
 
-          {/* Customer Info */}
           {selectedQuote.customer && (
             <section style={{ marginTop: 16 }}>
               <h4>Customer Info</h4>
@@ -136,40 +127,28 @@ export default function Dashboard() {
             </section>
           )}
 
-          {/* Line Items */}
           {selectedQuote.values && (
             <section style={{ marginTop: 24 }}>
               <h4>Line Items</h4>
               <ul style={{ paddingLeft: 20, lineHeight: 1.6 }}>
                 <li>
-                  <strong>Roofline ({selectedQuote.values.roof})</strong>: {selectedQuote.values.feet || 0} ft × ${RATES[selectedQuote.values.roof] || 0} = ${
-                    (selectedQuote.values.feet || 0) * (RATES[selectedQuote.values.roof] || 0)
-                  }
+                  <strong>Roofline ({selectedQuote.values.roof})</strong>: {selectedQuote.values.feet || 0} ft × ${RATES[selectedQuote.values.roof] || 0} = ${(selectedQuote.values.feet || 0) * (RATES[selectedQuote.values.roof] || 0)}
                 </li>
-                <li>
-                  <strong>Trees:</strong> {selectedQuote.values.treesCount || 0} × ${selectedQuote.values.treesPrice || 0}
-                </li>
-                <li>
-                  <strong>Bushes:</strong> {selectedQuote.values.bushesCount || 0} × ${selectedQuote.values.bushesPrice || 0}
-                </li>
+                <li><strong>Trees:</strong> {selectedQuote.values.treesCount || 0} × ${selectedQuote.values.treesPrice || 0}</li>
+                <li><strong>Bushes:</strong> {selectedQuote.values.bushesCount || 0} × ${selectedQuote.values.bushesPrice || 0}</li>
                 <li>
                   <strong>Ground Lights:</strong> {selectedQuote.values.ground || 0} ft × $5 = ${(selectedQuote.values.ground || 0) * 5}
                 </li>
                 {selectedQuote.values.otherPrice > 0 && (
-                  <li>
-                    <strong>Other ({selectedQuote.values.otherDesc})</strong>: ${selectedQuote.values.otherPrice}
-                  </li>
+                  <li><strong>Other ({selectedQuote.values.otherDesc})</strong>: ${selectedQuote.values.otherPrice}</li>
                 )}
                 {selectedQuote.values.addPrice > 0 && (
-                  <li>
-                    <strong>Additional Cost ({selectedQuote.values.addDesc})</strong>: ${selectedQuote.values.addPrice}
-                  </li>
+                  <li><strong>Additional Cost ({selectedQuote.values.addDesc})</strong>: ${selectedQuote.values.addPrice}</li>
                 )}
               </ul>
             </section>
           )}
 
-          {/* Total */}
           <div style={{ marginTop: 24, fontWeight: 'bold', fontSize: '1.1em' }}>
             Total Estimate: ${selectedQuote.total || 0}
           </div>

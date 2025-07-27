@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   MapContainer,
   TileLayer,
-  Marker,
+  CircleMarker,
   Popup,
   useMapEvents
 } from 'react-leaflet';
@@ -10,7 +10,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { v4 as uuidv4 } from 'uuid';
 
-// Configure default marker icons for CRA
+// Default icon fix (still needed for popups)
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
@@ -25,7 +25,14 @@ const STATUS_OPTIONS = [
   'Pending'
 ];
 
-// Component to handle map clicks and pass coords up
+const STATUS_COLORS = {
+  'Not Home': 'gray',
+  'Left Info': 'blue',
+  'FollowUp': 'orange',
+  'Quoted': 'green',
+  'Pending': 'yellow'
+};
+
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -38,7 +45,7 @@ function ClickHandler({ onMapClick }) {
 export default function GPS() {
   const [markers, setMarkers] = useState([]);
 
-  // On mount, prompt for GPS and add initial marker
+  // On mount: prompt GPS and add initial marker
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -56,7 +63,6 @@ export default function GPS() {
     );
   }, []);
 
-  // Add a new marker where user clicked
   const handleMapClick = ({ lat, lng }) => {
     setMarkers(ms => [
       ...ms,
@@ -64,7 +70,6 @@ export default function GPS() {
     ]);
   };
 
-  // Update a marker's status
   const updateStatus = (id, newStatus) => {
     setMarkers(ms =>
       ms.map(m => m.id === id ? { ...m, status: newStatus } : m)
@@ -89,10 +94,15 @@ export default function GPS() {
         />
         <ClickHandler onMapClick={handleMapClick} />
         {markers.map(marker => (
-          <Marker key={marker.id} position={[marker.lat, marker.lng]}>
+          <CircleMarker
+            key={marker.id}
+            center={[marker.lat, marker.lng]}
+            pathOptions={{ color: STATUS_COLORS[marker.status], fillOpacity: 0.7 }}
+            radius={10}
+          >
             <Popup>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <label>Status:</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <strong>Status:</strong>
                 <select
                   value={marker.status}
                   onChange={e => updateStatus(marker.id, e.target.value)}
@@ -103,7 +113,7 @@ export default function GPS() {
                 </select>
               </div>
             </Popup>
-          </Marker>
+          </CircleMarker>
         ))}
       </MapContainer>
     </div>

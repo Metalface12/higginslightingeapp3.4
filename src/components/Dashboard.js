@@ -1,7 +1,18 @@
+```jsx
 // src/components/Dashboard.js
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+
+// Price per foot rates for roofline categories
+const RATES = {
+  'Haven Evolution': 60,
+  'Haven Classic': 40,
+  'GlowFi': 25,
+  'Jasco': 15,
+  'Christmas Lights Leasing': 8,
+  'Christmas Lights Labor Only': 6
+};
 
 export default function Dashboard() {
   const [quotes, setQuotes] = useState([]);
@@ -16,7 +27,7 @@ export default function Dashboard() {
     return unsub;
   }, []);
 
-  // Filter logic
+  // Filter logic: name, email, or total
   const filtered = quotes.filter(q =>
     q.customer?.name.toLowerCase().includes(search.toLowerCase()) ||
     q.customer?.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -34,6 +45,7 @@ export default function Dashboard() {
         style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
       />
 
+      {/* Quotes Table */}
       {filtered.length === 0 ? (
         <p>No quotes found.</p>
       ) : (
@@ -72,30 +84,17 @@ export default function Dashboard() {
       {selected && (
         <div
           style={{
-            position: 'fixed',
-            top: '10%',
-            left: '10%',
-            right: '10%',
-            bottom: '10%',
-            background: '#fff',
-            border: '1px solid #ccc',
-            borderRadius: '8px',
-            padding: '20px',
-            overflowY: 'auto',
-            zIndex: 1000,
+            position: 'fixed', top: '10%', left: '10%', right: '10%', bottom: '10%',
+            background: '#fff', border: '1px solid #ccc', borderRadius: '8px',
+            padding: '20px', overflowY: 'auto', zIndex: 1000,
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}
         >
           <button
             onClick={() => setSelected(null)}
             style={{
-              float: 'right',
-              background: '#FF4136',
-              color: '#fff',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              cursor: 'pointer'
+              float: 'right', background: '#FF4136', color: '#fff',
+              border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer'
             }}
           >
             Close
@@ -103,38 +102,73 @@ export default function Dashboard() {
 
           <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '8px' }}>Quote Details</h3>
 
-          {/* Customer Info */}
+          {/* Customer Information */}
           <section style={{ marginTop: '16px' }}>
             <h4 style={{ marginBottom: '4px' }}>Customer Information</h4>
-            <div style={{ lineHeight: '1.6' }}>
+            <p style={{ lineHeight: '1.6' }}>
               <strong>Name:</strong> {selected.customer.name}<br/>
               <strong>Address:</strong> {selected.customer.address}<br/>
               <strong>Email:</strong> {selected.customer.email}<br/>
               <strong>Phone:</strong> {selected.customer.phone}
-            </div>
+            </p>
           </section>
 
           {/* Line Items */}
           <section style={{ marginTop: '24px' }}>
             <h4 style={{ marginBottom: '4px' }}>Line Items</h4>
             <ul style={{ paddingLeft: '20px', lineHeight: '1.6' }}>
+              {/* Roofline */}
               <li>
-                <strong>Roofline</strong> ({selected.values.roof}): {selected.values.feet} ft × ${selected.values.roofPrice || /* fallback */ (selected.values.roof === 'Haven Evolution' ? 60 : selected.values.roof === 'Haven Classic' ? 40 : selected.values.roof === 'GlowFi' ? 25 : selected.values.roof === 'Jasco' ? 15 : selected.values.roof.includes('Leasing') ? 8 : 6)}
+                <strong>Roofline</strong> ({selected.values.roof}):
+                &nbsp;{selected.values.feet} ft ×
+                &nbsp;${RATES[selected.values.roof] || 0} =
+                &nbsp;${selected.values.feet * (RATES[selected.values.roof] || 0)}
               </li>
-              <li><strong>Trees</strong>: {selected.values.treesCount} × ${selected.values.treesPrice}</li>
-              <li><strong>Bushes</strong>: {selected.values.bushesCount} × ${selected.values.bushesPrice}</li>
-              <li><strong>Ground Lights</strong>: {selected.values.ground} ft × $5</li>
+
+              {/* Trees */}
+              <li>
+                <strong>Trees</strong>:
+                &nbsp;{selected.values.treesCount} ×
+                &nbsp;${selected.values.treesPrice}
+              </li>
+
+              {/* Bushes */}
+              <li>
+                <strong>Bushes</strong>:
+                &nbsp;{selected.values.bushesCount} ×
+                &nbsp;${selected.values.bushesPrice}
+              </li>
+
+              {/* Ground Lights */}
+              <li>
+                <strong>Ground Lights</strong>:
+                &nbsp;{selected.values.ground} ft ×
+                &nbsp;$5 =
+                &nbsp;${selected.values.ground * 5}
+              </li>
+
+              {/* Other */}
               {selected.values.otherPrice > 0 && (
-                <li><strong>Other</strong> ({selected.values.otherDesc}): ${selected.values.otherPrice}</li>
+                <li>
+                  <strong>Other</strong> ({selected.values.otherDesc}):
+                  &nbsp;${selected.values.otherPrice}
+                </li>
               )}
+
+              {/* Additional Cost */}
               {selected.values.addPrice > 0 && (
-                <li><strong>Additional Cost</strong> ({selected.values.addDesc}): ${selected.values.addPrice}</li>
+                <li>
+                  <strong>Additional Cost</strong> ({selected.values.addDesc}):
+                  &nbsp;${selected.values.addPrice}
+                </li>
               )}
             </ul>
           </section>
 
-          {/* Total */}
-          <div style={{ marginTop: '24px', fontSize: '1.2em', fontWeight: 'bold' }}>
+          {/* Total Estimate */}
+          <div style={{
+            marginTop: '24px', fontSize: '1.2em', fontWeight: 'bold'
+          }}>
             Total Estimate: ${selected.total}
           </div>
         </div>
@@ -142,3 +176,4 @@ export default function Dashboard() {
     </div>
   );
 }
+```

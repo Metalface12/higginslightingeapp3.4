@@ -1,13 +1,17 @@
+// src/components/Dashboard.js
 import React, { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [quotes, setQuotes] = useState([]);
   const [search, setSearch] = useState('');
 
-  // Load quotes from localStorage
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('higgins_quotes') || '[]');
-    setQuotes(stored);
+    const unsub = onSnapshot(collection(db, 'quotes'), snap => {
+      setQuotes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
   }, []);
 
   const filtered = quotes.filter(q =>
@@ -18,48 +22,18 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2>Admin Dashboard</h2>
+      <h2>Admin Dashboard (shared)</h2>
       <input
-        type="text"
-        placeholder="Search by name, email or total"
-        value={search}
+        placeholder="Search…"
         onChange={e => setSearch(e.target.value)}
-        style={{ marginBottom: '10px', width: '100%', padding: '8px' }}
+        style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
       />
-      {filtered.length === 0 ? (
-        <p>No quotes found.</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#0074D9', color: 'white' }}>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Date</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Name</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Email</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Total</th>
-              <th style={{ padding: '8px', border: '1px solid #ddd' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(q => (
-              <tr key={q.id}>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{q.date}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{q.customer.name}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{q.customer.email}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>${q.total}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
-                  {/* Potential future: view details, delete, etc. */}
-                  <button
-                    onClick={() => alert(JSON.stringify(q, null, 2))}
-                    style={{ padding: '4px 8px' }}
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {filtered.map(q => (
+        <div key={q.id} style={{ borderBottom: '1px solid #ccc', padding: '8px 0' }}>
+          <strong>{q.customer.name}</strong> – ${q.total}<br/>
+          {q.customer.email} | {q.date}
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,10 +1,9 @@
-```jsx
 // src/components/Dashboard.js
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 
-// Roofline rates per foot
+// Price per foot rates for roofline categories
 const RATES = {
   'Haven Evolution': 60,
   'Haven Classic': 40,
@@ -19,7 +18,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
 
-  // Listen to Firestore quotes
+  // Subscribe to Firestore "quotes" collection
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'quotes'), (snap) => {
       setQuotes(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -27,24 +26,23 @@ export default function Dashboard() {
     return unsub;
   }, []);
 
-  // Filter by name, email, or total
-  const filtered = quotes.filter((q) => {
-    const name = q.customer?.name?.toLowerCase() || '';
-    const email = q.customer?.email?.toLowerCase() || '';
-    const total = q.total?.toString() || '';
-    const term = search.toLowerCase();
-    return name.includes(term) || email.includes(term) || total.includes(term);
-  });
+  // Filter logic: name, email, or total
+  const filtered = quotes.filter(
+    (q) =>
+      q.customer?.name.toLowerCase().includes(search.toLowerCase()) ||
+      q.customer?.email.toLowerCase().includes(search.toLowerCase()) ||
+      q.total?.toString().includes(search)
+  );
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ position: 'relative', padding: '20px' }}>
       <h2>Admin Dashboard</h2>
       <input
         type="text"
         placeholder="Search by name, email, or total"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{ width: '100%', padding: '8px', margin: '12px 0' }}
+        style={{ width: '100%', padding: '8px', marginBottom: '12px' }}
       />
 
       {/* Quotes Table */}
@@ -65,8 +63,12 @@ export default function Dashboard() {
             {filtered.map((q) => (
               <tr key={q.id}>
                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>{q.date}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{q.customer?.name}</td>
-                <td style={{ padding: '8px', border: '1px solid #ddd' }}>{q.customer?.email}</td>
+                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                  {q.customer?.name}
+                </td>
+                <td style={{ padding: '8px', border: '1px solid #ddd' }}>
+                  {q.customer?.email}
+                </td>
                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>${q.total}</td>
                 <td style={{ padding: '8px', border: '1px solid #ddd' }}>
                   <button
@@ -119,41 +121,64 @@ export default function Dashboard() {
             Quote Details
           </h3>
 
-          {/* Date */}
-          <p><strong>Date:</strong> {selected.date}</p>
-
-          {/* Customer Info */}
+          {/* Customer Information */}
           <section style={{ marginTop: '16px' }}>
-            <h4>Customer Information</h4>
+            <h4 style={{ marginBottom: '4px' }}>Customer Information</h4>
             <p style={{ lineHeight: '1.6' }}>
-              <strong>Name:</strong> {selected.customer.name}<br />
-              <strong>Address:</strong> {selected.customer.address}<br />
-              <strong>Email:</strong> {selected.customer.email}<br />
+              <strong>Name:</strong> {selected.customer.name}
+              <br />
+              <strong>Address:</strong> {selected.customer.address}
+              <br />
+              <strong>Email:</strong> {selected.customer.email}
+              <br />
               <strong>Phone:</strong> {selected.customer.phone}
             </p>
           </section>
 
           {/* Line Items */}
           <section style={{ marginTop: '24px' }}>
-            <h4>Line Items</h4>
+            <h4 style={{ marginBottom: '4px' }}>Line Items</h4>
             <ul style={{ paddingLeft: '20px', lineHeight: '1.6' }}>
               <li>
-                <strong>Roofline ({selected.values.roof})</strong>: {selected.values.feet} ft × ${RATES[selected.values.roof] || 0} = ${(selected.values.feet || 0) * (RATES[selected.values.roof] || 0)}
+                <strong>Roofline</strong> ({selected.values.roof}):{' '}
+                {selected.values.feet} ft × ${RATES[selected.values.roof] || 0} = $
+                {selected.values.feet * (RATES[selected.values.roof] || 0)}
               </li>
-              <li><strong>Trees</strong>: {selected.values.treesCount} × ${selected.values.treesPrice}</li>
-              <li><strong>Bushes</strong>: {selected.values.bushesCount} × ${selected.values.bushesPrice}</li>
-              <li><strong>Ground Lights</strong>: {selected.values.ground} ft × $5 = ${(selected.values.ground || 0) * 5}</li>
+              <li>
+                <strong>Trees</strong>: {selected.values.treesCount} × $
+                {selected.values.treesPrice}
+              </li>
+              <li>
+                <strong>Bushes</strong>: {selected.values.bushesCount} × $
+                {selected.values.bushesPrice}
+              </li>
+              <li>
+                <strong>Ground Lights</strong>: {selected.values.ground} ft × $5 = $
+                {selected.values.ground * 5}
+              </li>
               {selected.values.otherPrice > 0 && (
-                <li><strong>Other ({selected.values.otherDesc})</strong>: ${selected.values.otherPrice}</li>
+                <li>
+                  <strong>Other</strong> ({selected.values.otherDesc}): $
+                  {selected.values.otherPrice}
+                </li>
               )}
               {selected.values.addPrice > 0 && (
-                <li><strong>Additional Cost ({selected.values.addDesc})</strong>: ${selected.values.addPrice}</li>
+                <li>
+                  <strong>Additional Cost</strong> ({selected.values.addDesc}): $
+                  {selected.values.addPrice}
+                </li>
               )}
             </ul>
           </section>
 
           {/* Total Estimate */}
-          <div style={{ marginTop: '24px', fontSize: '1.2em', fontWeight: 'bold' }}>
+          <div
+            style={{
+              marginTop: '24px',
+              fontSize: '1.2em',
+              fontWeight: 'bold',
+            }}
+          >
             Total Estimate: ${selected.total}
           </div>
         </div>
@@ -161,4 +186,3 @@ export default function Dashboard() {
     </div>
   );
 }
-```

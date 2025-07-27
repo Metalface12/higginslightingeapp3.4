@@ -7,16 +7,17 @@ export default function Pricing() {
   // … same state for vals, total, customer, but remove localStorage logic
 
   async function saveQuote() {
-    if (!customer.name || !customer.email) {
-      setMsg('Enter name & email.');
-      return;
-    }
-    await addDoc(collection(db, 'quotes'), {
-      customer,
-      values: vals,
-      total,
-      date: new Date().toLocaleString()
-    });
+    import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+
+// ...
+await addDoc(collection(db, 'quotes'), {
+  customer,
+  values: vals,
+  total,
+  date: new Date().toLocaleString()
+});
+    
     setMsg('Quote saved (shared)!');
   }
 

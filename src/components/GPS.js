@@ -10,7 +10,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { v4 as uuidv4 } from 'uuid';
 
-// Default icon fix (still needed for popups)
+// Fix default icon paths for CRA
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
 import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
@@ -33,6 +33,19 @@ const STATUS_COLORS = {
   'Pending': 'yellow'
 };
 
+// Reverse‐geocode lat/lng → address string
+async function fetchAddress(lat, lng) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+    );
+    const data = await res.json();
+    return data.display_name || 'Unknown address';
+  } catch {
+    return 'Unable to fetch address';
+  }
+}
+
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -45,34 +58,35 @@ function ClickHandler({ onMapClick }) {
 export default function GPS() {
   const [markers, setMarkers] = useState([]);
 
-  // On mount: prompt GPS and add initial marker
+  // On mount, get current location & address
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude, longitude } = pos.coords;
-        setMarkers([{
-          id: uuidv4(),
-          lat: latitude,
-          lng: longitude,
-          status: 'Not Home'
-        }]);
+      async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const addr = await fetchAddress(lat, lng);
+        setMarkers([{ id: uuidv4(), lat, lng, status: 'Not Home', address: addr }]);
       },
       err => console.error('GPS error:', err),
       { enableHighAccuracy: true }
     );
   }, []);
 
-  const handleMapClick = ({ lat, lng }) => {
-    setMarkers(ms => [
-      ...ms,
-      { id: uuidv4(), lat, lng, status: 'Not Home' }
-    ]);
+  // Add new marker on click, then fetch its address
+  const handleMapClick = async ({ lat, lng }) => {
+    const id = uuidv4();
+    // temporary marker with loading address
+    setMarkers(ms => [...ms, { id, lat, lng, status: 'Not Home', address: 'Loading…' }]);
+    const addr = await fetchAddress(lat, lng);
+    setMarkers(ms =>
+      ms.map(m => (m.id === id ? { ...m, address: addr } : m))
+    );
   };
 
+  // Update status of a marker
   const updateStatus = (id, newStatus) => {
     setMarkers(ms =>
-      ms.map(m => m.id === id ? { ...m, status: newStatus } : m)
+      ms.map(m => (m.id === id ? { ...m, status: newStatus } : m))
     );
   };
 
@@ -93,29 +107,14 @@ export default function GPS() {
           attribution="&copy; OpenStreetMap contributors"
         />
         <ClickHandler onMapClick={handleMapClick} />
-        {markers.map(marker => (
+        {markers.map(({ id, lat, lng, status, address }) => (
           <CircleMarker
-            key={marker.id}
-            center={[marker.lat, marker.lng]}
-            pathOptions={{ color: STATUS_COLORS[marker.status], fillOpacity: 0.7 }}
+            key={id}
+            center={[lat, lng]}
+            pathOptions={{ color: STATUS_COLORS[status], fillOpacity: 0.7 }}
             radius={10}
           >
             <Popup>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <strong>Status:</strong>
-                <select
-                  value={marker.status}
-                  onChange={e => updateStatus(marker.id, e.target.value)}
-                >
-                  {STATUS_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-            </Popup>
-          </CircleMarker>
-        ))}
-      </MapContainer>
-    </div>
-  );
-}
+                <strong>Address:</strong>
+                <span style={{ fontSize: '0.9em

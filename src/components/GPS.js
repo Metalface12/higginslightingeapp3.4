@@ -13,6 +13,7 @@ import {
   onSnapshot,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc
 } from 'firebase/firestore';
 import L from 'leaflet';
@@ -20,7 +21,7 @@ import 'leaflet/dist/leaflet.css';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../firebase';
 
-// Leaflet icon fix for CRA
+// Leaflet default icon fix
 import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
 import iconUrl from    'leaflet/dist/images/marker-icon.png';
 import shadowUrl from  'leaflet/dist/images/marker-shadow.png';
@@ -28,7 +29,7 @@ delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl });
 
 const STATUS_OPTIONS = ['Not Home','Left Info','FollowUp','Quoted','Pending'];
-const STATUS_COLORS = {
+const STATUS_COLORS  = {
   'Not Home':  'gray',
   'Left Info': 'blue',
   'FollowUp':  'orange',
@@ -36,7 +37,7 @@ const STATUS_COLORS = {
   'Pending':   'yellow'
 };
 
-// Reverse‐geocode helper (same as before)
+// reverse‐geocode helper
 async function fetchAddress(lat, lng) {
   try {
     const res = await fetch(
@@ -49,7 +50,7 @@ async function fetchAddress(lat, lng) {
   }
 }
 
-// Capture map clicks
+// map click handler
 function ClickHandler({ onMapClick }) {
   useMapEvents({ click(e) { onMapClick(e.latlng); } });
   return null;
@@ -58,66 +59,52 @@ function ClickHandler({ onMapClick }) {
 export default function GPS() {
   const [markers, setMarkers] = useState([]);
 
-  // 1) Subscribe to Firestore markers collection
+  // Subscribe to Firestore
   useEffect(() => {
     const q = query(collection(db, 'markers'));
     const unsub = onSnapshot(q, snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setMarkers(data);
+      setMarkers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return unsub;
   }, []);
 
-  // 2) On mount: add your current-location marker *once* if the collection is empty
+  // On mount: add initial marker only if none exist
   useEffect(() => {
     (async () => {
-      if (!navigator.geolocation) return;
-      // Only add if no markers exist yet
-      const existing = await getDocs(collection(db, 'markers'));
+      const col = collection(db, 'markers');
+      const existing = await getDocs(col);
       if (!existing.empty) return;
-
-      navigator.geolocation.getCurrentPosition(
-        async pos => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          const address = await fetchAddress(lat, lng);
-          await addDoc(collection(db, 'markers'), {
-            lat,
-            lng,
-            status: 'Not Home',
-            address
-          });
-        },
-        err => console.error('GPS error:', err),
-        { enableHighAccuracy: true }
-      );
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const address = await fetchAddress(lat, lng);
+        await addDoc(col, { lat, lng, status: 'Not Home', address });
+      });
     })();
   }, []);
 
-  // 3) Add a new marker on map click
+  // Add a new marker
   const handleMapClick = async ({ lat, lng }) => {
-    const id = uuidv4();
+    const address = await fetchAddress(lat, lng);
     await addDoc(collection(db, 'markers'), {
-      lat,
-      lng,
+      lat, lng,
       status: 'Not Home',
-      address: await fetchAddress(lat, lng)
+      address
     });
   };
 
-  // 4) Update marker status
+  // Update status
   const updateStatus = async (id, newStatus) => {
     const ref = doc(db, 'markers', id);
-    await ref.update({ status: newStatus });
+    await updateDoc(ref, { status: newStatus });
   };
 
-  // 5) Delete marker
+  // Delete marker
   const deleteMarker = async id => {
     await deleteDoc(doc(db, 'markers', id));
   };
 
-  if (markers.length === 0) {
-    return <p>Loading GPS location…</p>;
-  }
+  if (!markers.length) return <p>Loading GPS location…</p>;
 
   return (
     <div>
@@ -132,47 +119,57 @@ export default function GPS() {
           attribution="&copy; OpenStreetMap contributors"
         />
         <ClickHandler onMapClick={handleMapClick} />
+
         {markers.map(m => (
-         <CircleMarker
-  key={m.id}
-  center={[m.lat, m.lng]}
-  pathOptions={{ color: STATUS_COLORS[m.status], fillOpacity: 0.7 }}
-  radius={10}
->
-  <Popup>
-    <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-      <strong>Address:</strong>
-      <span style={{ fontSize:'0.9em' }}>{m.address}</span>
-      <strong>Status:</strong>
-      <select
-        value={m.status}
-        onChange={e => updateStatus(m.id, e.target.value)}
-      >
-        {STATUS_OPTIONS.map(opt => (
-          <option key={opt} value={opt}>{opt}</option>
+          <CircleMarker
+            key={m.id}
+            center={[m.lat, m.lng]}
+            pathOptions={{ color: STATUS_COLORS[m.status], fillOpacity: 0.7 }}
+            radius={10}
+          >
+            <Popup
+              closeOnClick={false}
+              autoClose={false}
+            >
+              {/* Stop clicks here from bubbling to the map */}
+              <div onClick={e => e.stopPropagation()}>
+                <strong>Address:</strong>
+                <div style={{ fontSize: '0.9em', marginBottom: 8 }}>{m.address}</div>
+
+                <strong>Status:</strong>
+                <select
+                  value={m.status}
+                  onClick={e => e.stopPropagation()}
+                  onChange={e => updateStatus(m.id, e.target.value)}
+                  style={{ marginBottom: 8 }}
+                >
+                  {STATUS_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    deleteMarker(m.id);
+                  }}
+                  style={{
+                    display: 'block',
+                    marginTop: 8,
+                    backgroundColor: '#FF4136',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '6px',
+                    borderRadius: '4px'
+                  }}
+                >
+                  Delete Marker
+                </button>
+              </div>
+            </Popup>
+          </CircleMarker>
         ))}
-      </select>
-      <button
-       onClick={e => {
-         e.preventDefault();
-         e.stopPropagation();
-         deleteMarker(m.id);
-       }}
-        style={{
-          marginTop: '8px',
-          backgroundColor: '#FF4136',
-          color: 'white',
-          border: 'none',
-          padding: '6px',
-          borderRadius: '4px'
-        }}
-      >
-        Delete Marker
-      </button>
-    </div>
-  </Popup>
-</CircleMarker>
-        ))}
+
       </MapContainer>
     </div>
   );

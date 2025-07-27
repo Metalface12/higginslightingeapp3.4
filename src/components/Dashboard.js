@@ -5,11 +5,10 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 
 export default function Dashboard() {
-  // Local state for all quotes and search term
   const [quotes, setQuotes] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Define the per‑foot rates for roofline
+  // Define per-foot rates
   const rates = {
     'Haven Evolution': 60,
     'Haven Classic': 40,
@@ -19,21 +18,17 @@ export default function Dashboard() {
     'Christmas Lights Labor Only': 6,
   }
 
-  // Subscribe to Firestore 'quotes' collection
+  // Load quotes from Firestore
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, 'quotes'),
-      snapshot => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-        console.log('💾 Loaded quotes:', data)
-        setQuotes(data)
-      },
-      err => console.error('Firestore error:', err)
+      snapshot => setQuotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))),
+      error => console.error('Error loading quotes:', error)
     )
     return unsubscribe
   }, [])
 
-  // Filter quotes by customer name, email, or total
+  // Filter logic
   const filteredQuotes = quotes.filter(q => {
     const term = searchTerm.toLowerCase()
     const name = q.customer?.name.toLowerCase() || ''
@@ -54,7 +49,7 @@ export default function Dashboard() {
       />
 
       {filteredQuotes.map(q => {
-        // Calculate line‑item totals
+        // compute line-item totals
         const roofRate = rates[q.values.roof] || 0
         const roofTotal = (q.values.feet || 0) * roofRate
         const groundTotal = (q.values.ground || 0) * 5
@@ -68,7 +63,7 @@ export default function Dashboard() {
               padding: 16,
               marginBottom: 16,
               background: '#f9f9f9',
-              color: '#000'
+              color: '#000',
             }}
           >
             <p><strong>ID:</strong> {q.id}</p>
@@ -85,14 +80,24 @@ export default function Dashboard() {
               <li>
                 <strong>Roofline ({q.values.roof}):</strong> {q.values.feet || 0} ft × ${roofRate} = ${roofTotal}
               </li>
-              <li><strong>Trees:</strong> {q.values.treesCount} × ${q.values.treesPrice}</li>
-              <li><strong>Bushes:</strong> {q.values.bushesCount} × ${q.values.bushesPrice}</li>
-              <li><strong>Ground Lights:</strong> {q.values.ground || 0} ft × $5 = ${groundTotal}</li>
+              <li>
+                <strong>Trees:</strong> {q.values.treesCount} × ${q.values.treesPrice}
+              </li>
+              <li>
+                <strong>Bushes:</strong> {q.values.bushesCount} × ${q.values.bushesPrice}
+              </li>
+              <li>
+                <strong>Ground Lights:</strong> {q.values.ground || 0} ft × $5 = ${groundTotal}
+              </li>
               {q.values.otherPrice > 0 && (
-                <li><strong>Other ({q.values.otherDesc}):</strong> ${q.values.otherPrice}</li>
+                <li>
+                  <strong>Other ({q.values.otherDesc}):</strong> ${q.values.otherPrice}
+                </li>
               )}
               {q.values.addPrice > 0 && (
-                <li><strong>Additional Cost ({q.values.addDesc}):</strong> ${q.values.addPrice}</li>
+                <li>
+                  <strong>Additional Cost ({q.values.addDesc}):</strong> ${q.values.addPrice}
+                </li>
               )}
             </ul>
 

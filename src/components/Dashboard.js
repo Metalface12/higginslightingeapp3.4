@@ -1,3 +1,4 @@
+```jsx
 // src/components/Dashboard.js
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -33,9 +34,9 @@ export default function Dashboard() {
   const filtered = quotes.filter((q) => {
     const term = searchTerm.toLowerCase();
     return (
-      q.customer?.name?.toLowerCase().includes(term) ||
-      q.customer?.email?.toLowerCase().includes(term) ||
-      q.total.toString().includes(term)
+      (q.customer?.name || '').toLowerCase().includes(term) ||
+      (q.customer?.email || '').toLowerCase().includes(term) ||
+      q.total?.toString().includes(term)
     );
   });
 
@@ -62,7 +63,7 @@ export default function Dashboard() {
             }}
           >
             <div>
-              📅 {q.date} — <strong>{q.customer?.name}</strong> — ${q.total}
+              📅 {q.date || 'N/A'} — <strong>{q.customer?.name || 'N/A'}</strong> — ${q.total ?? 0}
             </div>
             <button
               onClick={() => setSelectedQuote(q)}
@@ -120,70 +121,61 @@ export default function Dashboard() {
           </h3>
 
           {/* Date */}
-          <p>
-            <strong>Date:</strong> {selectedQuote.date}
-          </p>
+          <p><strong>Date:</strong> {selectedQuote.date || 'N/A'}</p>
 
           {/* Customer Info */}
-          <section style={{ marginTop: 16 }}>
-            <h4>Customer Info</h4>
-            <p style={{ lineHeight: 1.6 }}>
-              <strong>Name:</strong> {selectedQuote.customer.name}
-              <br />
-              <strong>Address:</strong> {selectedQuote.customer.address}
-              <br />
-              <strong>Email:</strong> {selectedQuote.customer.email}
-              <br />
-              <strong>Phone:</strong> {selectedQuote.customer.phone}
-            </p>
-          </section>
+          {selectedQuote.customer && (
+            <section style={{ marginTop: 16 }}>
+              <h4>Customer Info</h4>
+              <p style={{ lineHeight: 1.6 }}>
+                <strong>Name:</strong> {selectedQuote.customer.name || 'N/A'}<br />
+                <strong>Address:</strong> {selectedQuote.customer.address || 'N/A'}<br />
+                <strong>Email:</strong> {selectedQuote.customer.email || 'N/A'}<br />
+                <strong>Phone:</strong> {selectedQuote.customer.phone || 'N/A'}
+              </p>
+            </section>
+          )}
 
           {/* Line Items */}
-          <section style={{ marginTop: 24 }}>
-            <h4>Line Items</h4>
-            <ul style={{ paddingLeft: 20, lineHeight: 1.6 }}>
-              <li>
-                <strong>Roofline ({selectedQuote.values.roof})</strong>:{' '}
-                {selectedQuote.values.feet} ft × $
-                {RATES[selectedQuote.values.roof] || 0} = $
-                {selectedQuote.values.feet *
-                  (RATES[selectedQuote.values.roof] || 0)}
-              </li>
-              <li>
-                <strong>Trees:</strong> {selectedQuote.values.treesCount} × $
-                {selectedQuote.values.treesPrice}
-              </li>
-              <li>
-                <strong>Bushes:</strong> {selectedQuote.values.bushesCount} × $
-                {selectedQuote.values.bushesPrice}
-              </li>
-              <li>
-                <strong>Ground Lights:</strong> {selectedQuote.values.ground} ft
-                × $5 = ${selectedQuote.values.ground * 5}
-              </li>
-              {selectedQuote.values.otherPrice > 0 && (
+          {selectedQuote.values && (
+            <section style={{ marginTop: 24 }}>
+              <h4>Line Items</h4>
+              <ul style={{ paddingLeft: 20, lineHeight: 1.6 }}>
                 <li>
-                  <strong>Other ({selectedQuote.values.otherDesc}):</strong> $
-                  {selectedQuote.values.otherPrice}
+                  <strong>Roofline ({selectedQuote.values.roof})</strong>: {selectedQuote.values.feet || 0} ft × ${RATES[selectedQuote.values.roof] || 0} = ${
+                    (selectedQuote.values.feet || 0) * (RATES[selectedQuote.values.roof] || 0)
+                  }
                 </li>
-              )}
-              {selectedQuote.values.addPrice > 0 && (
                 <li>
-                  <strong>
-                    Additional Cost ({selectedQuote.values.addDesc}):
-                  </strong>{' '}
-                  ${selectedQuote.values.addPrice}
+                  <strong>Trees:</strong> {selectedQuote.values.treesCount || 0} × ${selectedQuote.values.treesPrice || 0}
                 </li>
-              )}
-            </ul>
-          </section>
+                <li>
+                  <strong>Bushes:</strong> {selectedQuote.values.bushesCount || 0} × ${selectedQuote.values.bushesPrice || 0}
+                </li>
+                <li>
+                  <strong>Ground Lights:</strong> {selectedQuote.values.ground || 0} ft × $5 = ${(selectedQuote.values.ground || 0) * 5}
+                </li>
+                {selectedQuote.values.otherPrice > 0 && (
+                  <li>
+                    <strong>Other ({selectedQuote.values.otherDesc})</strong>: ${selectedQuote.values.otherPrice}
+                  </li>
+                )}
+                {selectedQuote.values.addPrice > 0 && (
+                  <li>
+                    <strong>Additional Cost ({selectedQuote.values.addDesc})</strong>: ${selectedQuote.values.addPrice}
+                  </li>
+                )}
+              </ul>
+            </section>
+          )}
 
           {/* Total */}
           <div style={{ marginTop: 24, fontWeight: 'bold', fontSize: '1.1em' }}>
-            Total Estimate: ${selectedQuote.total}
+            Total Estimate: ${selectedQuote.total || 0}
           </div>
         </div>
       )}
     </div>
   );
 }
+```

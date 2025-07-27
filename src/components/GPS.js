@@ -133,41 +133,45 @@ export default function GPS() {
         />
         <ClickHandler onMapClick={handleMapClick} />
         {markers.map(m => (
-          <CircleMarker
-            key={m.id}
-            center={[m.lat, m.lng]}
-            pathOptions={{ color: STATUS_COLORS[m.status], fillOpacity: 0.7 }}
-            radius={10}
-          >
-            <Popup>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <strong>Address:</strong>
-                <span style={{ fontSize: '0.9em' }}>{m.address}</span>
-                <strong>Status:</strong>
-                <select
-                  value={m.status}
-                  onChange={e => updateStatus(m.id, e.target.value)}
-                >
-                  {STATUS_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => deleteMarker(m.id)}
-                  style={{
-                    marginTop: '8px',
-                    backgroundColor: '#FF4136',
-                    color: 'white',
-                    border: 'none',
-                    padding: '6px',
-                    borderRadius: '4px'
-                  }}
-                >
-                  Delete Marker
-                </button>
-              </div>
-            </Popup>
-          </CircleMarker>
+         <CircleMarker
+  key={m.id}
+  center={[m.lat, m.lng]}
+  pathOptions={{ color: STATUS_COLORS[m.status], fillOpacity: 0.7 }}
+  radius={10}
+>
+  <Popup>
+    <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+      <strong>Address:</strong>
+      <span style={{ fontSize:'0.9em' }}>{m.address}</span>
+      <strong>Status:</strong>
+      <select
+        value={m.status}
+        onChange={e => updateStatus(m.id, e.target.value)}
+      >
+        {STATUS_OPTIONS.map(opt => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+      <button
+       onClick={e => {
+         e.preventDefault();
+         e.stopPropagation();
+         deleteMarker(m.id);
+       }}
+        style={{
+          marginTop: '8px',
+          backgroundColor: '#FF4136',
+          color: 'white',
+          border: 'none',
+          padding: '6px',
+          borderRadius: '4px'
+        }}
+      >
+        Delete Marker
+      </button>
+    </div>
+  </Popup>
+</CircleMarker>
         ))}
       </MapContainer>
     </div>
